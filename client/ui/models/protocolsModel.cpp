@@ -133,6 +133,7 @@ PageLoader::PageEnum ProtocolsModel::serverProtocolPage(Proto protocol) const
     case Proto::MtProxy: return PageLoader::PageEnum::PageServiceMtProxySettings;
     case Proto::Telemt: return PageLoader::PageEnum::PageServiceTelemtSettings;
     case Proto::TProxy: return PageLoader::PageEnum::PageServiceTProxySettings;
+    case Proto::TgWsProxy: return PageLoader::PageEnum::PageServiceTgWsProxySettings;
     default: return PageLoader::PageEnum::PageProtocolOpenVpnSettings;
     }
 }

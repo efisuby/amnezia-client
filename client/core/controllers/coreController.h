@@ -81,6 +81,7 @@
 #include "ui/models/services/mtProxyConfigModel.h"
 #include "ui/models/services/telemtConfigModel.h"
 #include "ui/models/services/tProxyConfigModel.h"
+#include "ui/models/services/tgWsProxyConfigModel.h"
 
 #include "ui/models/ipSplitTunnelingModel.h"
 #include "ui/models/newsModel.h"
@@ -246,6 +247,7 @@ private:
     MtProxyConfigModel* m_mtProxyConfigModel;
     TelemtConfigModel* m_telemtConfigModel;
     TProxyConfigModel* m_tProxyConfigModel;
+    TgWsProxyConfigModel* m_tgWsProxyConfigModel;
 
     CoreSignalHandlers* m_signalHandlers;
 };

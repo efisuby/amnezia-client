@@ -14,6 +14,7 @@
 #include "core/utils/commonStructs.h"
 #include "core/repositories/secureServersRepository.h"
 #include "core/repositories/secureAppSettingsRepository.h"
+#include "core/controllers/ipSplitTunnelingController.h"
 #include "core/protocols/vpnProtocol.h"
 #include "vpnConnection.h"
 
@@ -26,6 +27,7 @@ class ConnectionController : public QObject
 public:
     explicit ConnectionController(SecureServersRepository* serversRepository,
                                  SecureAppSettingsRepository* appSettingsRepository,
+                                 IpSplitTunnelingController* ipSplitTunnelingController,
                                  VpnConnection* vpnConnection,
                                  QObject* parent = nullptr);
     ~ConnectionController() = default;
@@ -75,10 +77,13 @@ signals:
 
 private:
     ErrorCode defaultContainerForServer(const QString &serverId, DockerContainer &container) const;
+    void startConnection(const QString &serverId, DockerContainer container, const QJsonObject &vpnConfiguration);
 
     SecureServersRepository* m_serversRepository;
     SecureAppSettingsRepository* m_appSettingsRepository;
+    IpSplitTunnelingController* m_ipSplitTunnelingController;
     VpnConnection* m_vpnConnection;
+    QMetaObject::Connection m_sitesListUpdateConnection;
 };
 
 #endif

@@ -123,6 +123,67 @@ private slots:
         QVERIFY2(finishedSpy.count() == 6, "finished signal should be emitted");
         QVERIFY2(m_coreController->m_ipSplitTunnelingModel->rowCount() == 0, "IpSplitTunnelingModel should have 0 rows");
     }
+
+    void testReplaceSitesFromDownloadedList()
+    {
+        auto *controller = m_coreController->m_ipSplitTunnelingController;
+        auto *repository = m_coreController->m_appSettingsRepository;
+
+        controller->setRouteMode(RouteMode::VpnOnlyForwardSites);
+        repository->addVpnSite(RouteMode::VpnOnlyForwardSites, "manual.example.com", { "10.0.0.1" });
+        repository->addVpnSite(RouteMode::VpnAllExceptSites, "direct.example.com", { "10.0.0.2" });
+
+        const QByteArray downloadedList = R"([
+            {"hostname": "1.1.1.1\/32", "ip": ""},
+            {"hostname": "1.9.0.0\/16", "ip": ""},
+            {"hostname": "2.16.0.0\/14", "ip": ""}
+        ])";
+
+        QString errorMessage;
+        QVERIFY(controller->replaceSitesFromJson(RouteMode::VpnOnlyForwardSites, downloadedList, errorMessage));
+
+        const QVariantMap forwardSites = repository->vpnSites(RouteMode::VpnOnlyForwardSites);
+        QCOMPARE(forwardSites.size(), 3);
+        QVERIFY(forwardSites.contains("1.1.1.1/32"));
+        QVERIFY(forwardSites.contains("1.9.0.0/16"));
+        QVERIFY(forwardSites.contains("2.16.0.0/14"));
+        QVERIFY(!forwardSites.contains("manual.example.com"));
+        QCOMPARE(controller->getCurrentSites().size(), 3);
+
+        QVERIFY(repository->vpnSites(RouteMode::VpnAllExceptSites).contains("direct.example.com"));
+
+        QVERIFY(!controller->replaceSitesFromJson(RouteMode::VpnOnlyForwardSites, "not json", errorMessage));
+        QVERIFY(!controller->replaceSitesFromJson(RouteMode::VpnOnlyForwardSites, "[]", errorMessage));
+        QCOMPARE(repository->vpnSites(RouteMode::VpnOnlyForwardSites).size(), 3);
+    }
+
+    void testSitesListAutoUpdateConditions()
+    {
+        auto *controller = m_coreController->m_ipSplitTunnelingController;
+        auto *repository = m_coreController->m_appSettingsRepository;
+
+        QVERIFY(!controller->isSitesListAutoUpdateEnabled());
+        QCOMPARE(controller->sitesListUrl(), QStringLiteral("https://iplist.opencck.org/?format=amnezia&data=cidr4"));
+
+        controller->setRouteMode(RouteMode::VpnOnlyForwardSites);
+        controller->toggleSplitTunneling(true);
+        QVERIFY(!controller->isSitesListAutoUpdateNeeded());
+
+        controller->setSitesListAutoUpdateEnabled(true);
+        QVERIFY(controller->isSitesListAutoUpdateNeeded());
+
+        controller->setRouteMode(RouteMode::VpnAllExceptSites);
+        QVERIFY(!controller->isSitesListAutoUpdateNeeded());
+        controller->setRouteMode(RouteMode::VpnOnlyForwardSites);
+
+        controller->toggleSplitTunneling(false);
+        QVERIFY(!controller->isSitesListAutoUpdateNeeded());
+        controller->toggleSplitTunneling(true);
+
+        controller->setSitesListUrl("  ");
+        QVERIFY(repository->sitesListUrl().isEmpty());
+        QVERIFY(!controller->isSitesListAutoUpdateNeeded());
+    }
 };
 
 QTEST_MAIN(TestUiIpModelAndController)

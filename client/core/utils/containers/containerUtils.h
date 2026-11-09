@@ -44,6 +44,8 @@ namespace amnezia
         bool isShareable(DockerContainer container);
 
         bool isAwgContainer(DockerContainer container);
+        bool isDnsContainer(DockerContainer container);
+        QStringList migrationStatePaths(DockerContainer container);
 
         bool isUnsupportedContainer(DockerContainer container);
 

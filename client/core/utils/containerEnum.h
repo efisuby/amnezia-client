@@ -29,6 +29,8 @@ namespace amnezia
             MtProxy,
             Telemt,
             TProxy,
+            DnsAdblock,
+            TgWsProxy,
         };
         Q_ENUM_NS(DockerContainer)
     } // namespace ContainerEnumNS

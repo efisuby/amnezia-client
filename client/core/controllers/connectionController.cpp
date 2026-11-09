@@ -21,11 +21,13 @@ using namespace ProtocolUtils;
 
 ConnectionController::ConnectionController(SecureServersRepository* serversRepository,
                                          SecureAppSettingsRepository* appSettingsRepository,
+                                         IpSplitTunnelingController* ipSplitTunnelingController,
                                          VpnConnection* vpnConnection,
                                          QObject* parent)
     : QObject(parent),
       m_serversRepository(serversRepository),
       m_appSettingsRepository(appSettingsRepository),
+      m_ipSplitTunnelingController(ipSplitTunnelingController),
       m_vpnConnection(vpnConnection)
 {
     connect(m_vpnConnection, &VpnConnection::connectionStateChanged, this, &ConnectionController::connectionStateChanged);
@@ -216,17 +218,40 @@ ErrorCode ConnectionController::openConnection(const QString &serverId)
         return errorCode;
     }
 
+    disconnect(m_sitesListUpdateConnection);
+    if (!m_ipSplitTunnelingController->isSitesListAutoUpdateNeeded()) {
+        startConnection(serverId, container, vpnConfiguration);
+        return ErrorCode::NoError;
+    }
+
+    setConnectionState(Vpn::ConnectionState::Connecting);
+    m_sitesListUpdateConnection = connect(m_ipSplitTunnelingController, &IpSplitTunnelingController::sitesListUpdateFinished, this,
+                                          [this, serverId, container, vpnConfiguration]() {
+                                              disconnect(m_sitesListUpdateConnection);
+                                              startConnection(serverId, container, vpnConfiguration);
+                                          });
+    m_ipSplitTunnelingController->updateSitesFromUrl();
+    return ErrorCode::NoError;
+}
+
+void ConnectionController::startConnection(const QString &serverId, DockerContainer container, const QJsonObject &vpnConfiguration)
+{
     const auto apiV2 = m_serversRepository->apiV2Config(serverId);
     if (apiV2.has_value() && !apiV2->sendPayload.isEmpty()) {
         PayloadSender::sendAll(apiV2->sendPayload);
     }
 
     emit openConnectionRequested(serverId, container, vpnConfiguration);
-    return ErrorCode::NoError;
 }
 
 void ConnectionController::closeConnection()
 {
+    if (disconnect(m_sitesListUpdateConnection)) {
+        m_ipSplitTunnelingController->cancelSitesListUpdate();
+        setConnectionState(Vpn::ConnectionState::Disconnected);
+        return;
+    }
+
     if (m_vpnConnection) {
         emit closeConnectionRequested();
     }

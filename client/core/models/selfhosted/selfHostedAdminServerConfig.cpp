@@ -70,7 +70,7 @@ QPair<QString, QString> SelfHostedAdminServerConfig::getDnsPair(bool isAmneziaDn
 {
     QString d1 = dns1;
     QString d2 = dns2;
-    const bool dnsOnServer = containers.contains(DockerContainer::Dns);
+    const bool dnsOnServer = containers.contains(DockerContainer::Dns) || containers.contains(DockerContainer::DnsAdblock);
 
     if (d1.isEmpty() || !NetworkUtilities::checkIPv4Format(d1)) {
         d1 = (isAmneziaDnsEnabled && dnsOnServer) ? protocols::dns::amneziaDnsIp : primaryDns;

@@ -33,13 +33,16 @@ public:
                               QObject *parent = nullptr);
     ~InstallController();
 
-    ErrorCode setupContainer(const ServerCredentials &credentials, DockerContainer container, ContainerConfig &config, bool isUpdate = false, bool acceptXrayKeyLoss = false);
+    ErrorCode setupContainer(const ServerCredentials &credentials, DockerContainer container, ContainerConfig &config, bool isUpdate = false, bool acceptXrayKeyLoss = false,
+                             const QByteArray &stateArchive = QByteArray());
 
     // Updates server-side container settings (admin self-hosted only): reconfigures the container over SSH.
     ErrorCode updateServerConfig(const QString &serverId, DockerContainer container, const ContainerConfig &oldConfig, ContainerConfig &newConfig, bool acceptXrayKeyLoss = false);
 
     // Updates client-local settings only: rewrites the stored container config for any self-hosted/native server. No SSH.
     ErrorCode updateClientConfig(const QString &serverId, DockerContainer container, ContainerConfig &newConfig);
+
+    ErrorCode migrateServer(const QString &serverId, const ServerCredentials &newCredentials, QList<DockerContainer> &skippedContainers);
 
     ErrorCode rebootServer(const QString &serverId);
     ErrorCode updateServerPackages(const QString &serverId);
@@ -98,6 +101,7 @@ signals:
     void cancelInstallationRequested();
     void clientRevocationRequested(const QString &serverId, const ContainerConfig &containerConfig, DockerContainer container);
     void clientAppendRequested(const QString &serverId, const QString &clientId, const QString &clientName, DockerContainer container);
+    void migrationProgress(DockerContainer container, int index, int total);
 
 private:
     ErrorCode installDockerWorker(const ServerCredentials &credentials, DockerContainer container, SshSession &sshSession);
@@ -111,6 +115,11 @@ private:
                                                  SshSession &sshSession, QMap<QString, QString> &outFiles);
     ErrorCode restoreXrayStateIntoDataVolume(const ServerCredentials &credentials, DockerContainer container,
                                              SshSession &sshSession, const QMap<QString, QString> &files);
+
+    ErrorCode readContainerState(const ServerCredentials &credentials, DockerContainer container, SshSession &sshSession,
+                                 QByteArray &stateArchive);
+    ErrorCode restoreContainerState(const ServerCredentials &credentials, DockerContainer container, SshSession &sshSession,
+                                    const QByteArray &stateArchive);
 
     ErrorCode isServerPortBusy(const ServerCredentials &credentials, DockerContainer container, const ContainerConfig &config, SshSession &sshSession);
     ErrorCode isUserInSudo(const ServerCredentials &credentials, SshSession &sshSession);

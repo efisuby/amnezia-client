@@ -147,6 +147,19 @@ PageType {
 
                 visible: root.isServerWithWriteAccess
 
+                text: qsTr("Move to another server")
+                subtitle: qsTr("Same settings, keys and users on a new server")
+
+                onClicked: PageController.goToPage(PageEnum.PageSettingsServerMigration)
+            }
+
+            ListItemType {
+                Layout.fillWidth: true
+                Layout.leftMargin: 16
+                Layout.rightMargin: 16
+
+                visible: root.isServerWithWriteAccess
+
                 text: qsTr("Reboot server")
                 destructive: true
 

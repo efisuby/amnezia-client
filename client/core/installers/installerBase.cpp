@@ -110,6 +110,12 @@ ContainerConfig InstallerBase::createBaseConfig(DockerContainer container, int p
             config.protocolConfig = mtConfig;
             break;
         }
+        case Proto::TgWsProxy: {
+            TgWsProxyProtocolConfig tgWsProxyConfig;
+            tgWsProxyConfig.port = portStr;
+            config.protocolConfig = tgWsProxyConfig;
+            break;
+        }
         case Proto::Telemt: {
             TelemtProtocolConfig telemtConfig;
             telemtConfig.port = portStr;

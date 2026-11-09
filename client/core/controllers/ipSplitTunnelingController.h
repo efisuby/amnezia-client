@@ -9,6 +9,9 @@
 #include <QJsonDocument>
 #include <QJsonArray>
 #include <QHostInfo>
+#include <QPointer>
+
+class QNetworkReply;
 
 #include "core/utils/errorCodes.h"
 #include "core/utils/routeModes.h"
@@ -37,6 +40,18 @@ public:
 
     bool importSitesFromJson(const QByteArray& jsonData, bool replaceExisting, QString &errorMessage);
     QByteArray exportSitesToJson() const;
+    bool replaceSitesFromJson(RouteMode mode, const QByteArray &jsonData, QString &errorMessage);
+
+    bool isSitesListAutoUpdateEnabled() const;
+    void setSitesListAutoUpdateEnabled(bool enabled);
+    QString sitesListUrl() const;
+    void setSitesListUrl(const QString &url);
+    bool isSitesListAutoUpdateNeeded() const;
+    void updateSitesFromUrl();
+    void cancelSitesListUpdate();
+
+signals:
+    void sitesListUpdateFinished(bool success);
 
 private slots:
     void onHostResolved(const QHostInfo &hostInfo);
@@ -48,10 +63,13 @@ private:
     bool validateHostname(const QString &hostname) const;
     void processSiteAfterResolve(const QString &hostname, const QStringList &ips);
     void processSite(const QString &hostname, const QStringList &ips);
+    bool parseSitesJson(const QByteArray &jsonData, QMap<QString, QStringList> &sites, QString &errorMessage) const;
+    void onSitesListReplyFinished(QNetworkReply *reply);
 
     SecureAppSettingsRepository* m_appSettingsRepository;
     RouteMode m_currentRouteMode;
     QVector<QPair<QString, QStringList>> m_sites;
+    QPointer<QNetworkReply> m_sitesListReply;
 };
 
 #endif // IPSPLITTUNNELINGCONTROLLER_H

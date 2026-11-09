@@ -14,6 +14,10 @@
 #include "core/utils/constants/configKeys.h"
 #include "core/utils/networkUtilities.h"
 
+namespace {
+    constexpr char defaultSitesListUrl[] = "https://iplist.opencck.org/?format=amnezia&data=cidr4";
+}
+
 using namespace amnezia;
 
 namespace {
@@ -206,6 +210,26 @@ void SecureAppSettingsRepository::setSitesSplitTunnelingEnabled(bool enabled)
 {
     setValue("Conf/sitesSplitTunnelingEnabled", enabled);
     emit sitesSplitTunnelingEnabledChanged(enabled);
+}
+
+bool SecureAppSettingsRepository::isSitesListAutoUpdateEnabled() const
+{
+    return value("Conf/sitesListAutoUpdateEnabled", false).toBool();
+}
+
+void SecureAppSettingsRepository::setSitesListAutoUpdateEnabled(bool enabled)
+{
+    setValue("Conf/sitesListAutoUpdateEnabled", enabled);
+}
+
+QString SecureAppSettingsRepository::sitesListUrl() const
+{
+    return value("Conf/sitesListUrl", QString::fromLatin1(defaultSitesListUrl)).toString();
+}
+
+void SecureAppSettingsRepository::setSitesListUrl(const QString &url)
+{
+    setValue("Conf/sitesListUrl", url);
 }
 
 namespace {

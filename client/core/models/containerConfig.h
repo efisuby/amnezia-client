@@ -66,6 +66,9 @@ struct ContainerConfig {
     TProxyProtocolConfig* getTProxyProtocolConfig();
     const TProxyProtocolConfig* getTProxyProtocolConfig() const;
 
+    TgWsProxyProtocolConfig* getTgWsProxyProtocolConfig();
+    const TgWsProxyProtocolConfig* getTgWsProxyProtocolConfig() const;
+
     Ikev2ProtocolConfig* getIkev2ProtocolConfig();
     const Ikev2ProtocolConfig* getIkev2ProtocolConfig() const;
     

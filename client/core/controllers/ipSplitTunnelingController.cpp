@@ -2,6 +2,15 @@
 #include "core/utils/networkUtilities.h"
 #include <QJsonObject>
 #include <QDebug>
+#include <QNetworkReply>
+#include <QNetworkRequest>
+#include <QUrl>
+
+#include "amneziaApplication.h"
+
+namespace {
+    constexpr int sitesListRequestTimeoutMsecs = 15 * 1000;
+}
 
 IpSplitTunnelingController::IpSplitTunnelingController(SecureAppSettingsRepository* appSettingsRepository, QObject* parent)
     : QObject(parent),
@@ -215,7 +224,8 @@ void IpSplitTunnelingController::processSite(const QString &hostname, const QStr
     addSiteInternal(hostname, ips);
 }
 
-bool IpSplitTunnelingController::importSitesFromJson(const QByteArray& jsonData, bool replaceExisting, QString &errorMessage)
+bool IpSplitTunnelingController::parseSitesJson(const QByteArray &jsonData, QMap<QString, QStringList> &sites,
+                                               QString &errorMessage) const
 {
     QJsonParseError parseError;
     QJsonDocument jsonDocument = QJsonDocument::fromJson(jsonData, &parseError);
@@ -231,7 +241,6 @@ bool IpSplitTunnelingController::importSitesFromJson(const QByteArray& jsonData,
     }
     
     QJsonArray jsonArray = jsonDocument.array();
-    QMap<QString, QStringList> sites;
     
     for (auto jsonValue : jsonArray) {
         QJsonObject jsonObject = jsonValue.toObject();
@@ -260,10 +269,115 @@ bool IpSplitTunnelingController::importSitesFromJson(const QByteArray& jsonData,
         
         sites.insert(normalizedHostname, ips);
     }
+
+    return true;
+}
+
+bool IpSplitTunnelingController::importSitesFromJson(const QByteArray& jsonData, bool replaceExisting, QString &errorMessage)
+{
+    QMap<QString, QStringList> sites;
+    if (!parseSitesJson(jsonData, sites, errorMessage)) {
+        return false;
+    }
     
     addSites(sites, replaceExisting);
     
     return true;
+}
+
+bool IpSplitTunnelingController::replaceSitesFromJson(RouteMode mode, const QByteArray &jsonData, QString &errorMessage)
+{
+    QMap<QString, QStringList> sites;
+    if (!parseSitesJson(jsonData, sites, errorMessage)) {
+        return false;
+    }
+    if (sites.isEmpty()) {
+        errorMessage = tr("The site list is empty");
+        return false;
+    }
+
+    m_appSettingsRepository->removeAllVpnSites(mode);
+    m_appSettingsRepository->addVpnSites(mode, sites);
+    if (mode == m_currentRouteMode) {
+        fillSites();
+    }
+    return true;
+}
+
+bool IpSplitTunnelingController::isSitesListAutoUpdateEnabled() const
+{
+    return m_appSettingsRepository->isSitesListAutoUpdateEnabled();
+}
+
+void IpSplitTunnelingController::setSitesListAutoUpdateEnabled(bool enabled)
+{
+    m_appSettingsRepository->setSitesListAutoUpdateEnabled(enabled);
+}
+
+QString IpSplitTunnelingController::sitesListUrl() const
+{
+    return m_appSettingsRepository->sitesListUrl();
+}
+
+void IpSplitTunnelingController::setSitesListUrl(const QString &url)
+{
+    m_appSettingsRepository->setSitesListUrl(url.trimmed());
+}
+
+bool IpSplitTunnelingController::isSitesListAutoUpdateNeeded() const
+{
+    const QUrl url(m_appSettingsRepository->sitesListUrl());
+    return m_appSettingsRepository->isSitesSplitTunnelingEnabled()
+            && m_appSettingsRepository->routeMode() == RouteMode::VpnOnlyForwardSites
+            && m_appSettingsRepository->isSitesListAutoUpdateEnabled()
+            && url.isValid() && !url.isEmpty();
+}
+
+void IpSplitTunnelingController::updateSitesFromUrl()
+{
+    cancelSitesListUpdate();
+
+    QNetworkRequest request(QUrl(m_appSettingsRepository->sitesListUrl()));
+    request.setTransferTimeout(sitesListRequestTimeoutMsecs);
+
+    QNetworkReply *reply = amnApp->networkManager()->get(request);
+    m_sitesListReply = reply;
+    connect(reply, &QNetworkReply::finished, this, [this, reply]() { onSitesListReplyFinished(reply); });
+}
+
+void IpSplitTunnelingController::cancelSitesListUpdate()
+{
+    if (!m_sitesListReply) {
+        return;
+    }
+
+    QNetworkReply *reply = m_sitesListReply;
+    m_sitesListReply = nullptr;
+    reply->disconnect(this);
+    reply->abort();
+    reply->deleteLater();
+}
+
+void IpSplitTunnelingController::onSitesListReplyFinished(QNetworkReply *reply)
+{
+    reply->deleteLater();
+    m_sitesListReply = nullptr;
+
+    if (reply->error() != QNetworkReply::NoError) {
+        qWarning() << "[SplitTunneling] Sites list download failed:" << reply->error()
+                   << "HTTP status:" << reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt();
+        emit sitesListUpdateFinished(false);
+        return;
+    }
+
+    QString errorMessage;
+    if (!replaceSitesFromJson(RouteMode::VpnOnlyForwardSites, reply->readAll(), errorMessage)) {
+        qWarning() << "[SplitTunneling] Sites list is not applied:" << errorMessage;
+        emit sitesListUpdateFinished(false);
+        return;
+    }
+
+    emit sitesListUpdateFinished(true);
 }
 
 QByteArray IpSplitTunnelingController::exportSitesToJson() const

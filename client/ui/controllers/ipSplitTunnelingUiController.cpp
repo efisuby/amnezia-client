@@ -14,6 +14,12 @@ IpSplitTunnelingUiController::IpSplitTunnelingUiController(IpSplitTunnelingContr
       m_ipSplitTunnelingModel(ipSplitTunnelingModel)
 {
     m_ipSplitTunnelingModel->updateModel(m_ipSplitTunnelingController->getCurrentSites());
+
+    connect(m_ipSplitTunnelingController, &IpSplitTunnelingController::sitesListUpdateFinished, this, [this](bool success) {
+        if (success) {
+            updateModel();
+        }
+    });
 }
 
 void IpSplitTunnelingUiController::addSite(QString hostname)
@@ -84,6 +90,28 @@ int IpSplitTunnelingUiController::getRouteMode() const
 bool IpSplitTunnelingUiController::isSplitTunnelingEnabled() const
 {
     return m_ipSplitTunnelingController->isSplitTunnelingEnabled();
+}
+
+bool IpSplitTunnelingUiController::isSitesListAutoUpdateEnabled() const
+{
+    return m_ipSplitTunnelingController->isSitesListAutoUpdateEnabled();
+}
+
+void IpSplitTunnelingUiController::setSitesListAutoUpdateEnabled(bool enabled)
+{
+    m_ipSplitTunnelingController->setSitesListAutoUpdateEnabled(enabled);
+    emit isSitesListAutoUpdateEnabledChanged();
+}
+
+QString IpSplitTunnelingUiController::sitesListUrl() const
+{
+    return m_ipSplitTunnelingController->sitesListUrl();
+}
+
+void IpSplitTunnelingUiController::setSitesListUrl(const QString &url)
+{
+    m_ipSplitTunnelingController->setSitesListUrl(url);
+    emit sitesListUrlChanged();
 }
 
 void IpSplitTunnelingUiController::updateModel()

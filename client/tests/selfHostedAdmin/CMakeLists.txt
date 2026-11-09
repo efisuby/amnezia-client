@@ -40,4 +40,15 @@ target_link_libraries(test_xray_vps_matrix PRIVATE
 
 add_test(NAME XrayVpsMatrixTest COMMAND test_xray_vps_matrix)
 
+add_executable(test_tg_ws_proxy_vps
+    testTgWsProxyVps.cpp
+)
+
+target_link_libraries(test_tg_ws_proxy_vps PRIVATE
+    Qt6::Test
+    test_common
+)
+
+add_test(NAME TgWsProxyVpsTest COMMAND test_tg_ws_proxy_vps)
+
 amnezia_copy_runtime_dlls()

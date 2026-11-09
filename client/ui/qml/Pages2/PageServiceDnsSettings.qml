@@ -3,6 +3,7 @@ import QtQuick.Controls
 import QtQuick.Layouts
 
 import PageEnum 1.0
+import ContainerProps 1.0
 import Style 1.0
 
 import "./"
@@ -13,6 +14,8 @@ import "../Components"
 
 PageType {
     id: root
+
+    readonly property bool isAdblock: ServersUiController.processedContainerIndex === ContainerProps.containerFromString("amnezia-dnsadblock")
 
     FlickableType {
         id: flickable
@@ -33,9 +36,10 @@ PageType {
             NavigationBarType {
                 Layout.fillWidth: true
 
-                title: "AmneziaDNS"
+                title: ContainersModel.getProcessedContainerName()
                 description: qsTr("A DNS service is installed on your server, and it is only accessible via VPN.\n").trim() + " " +
-                             qsTr("The DNS address is the same as the address of your server. You can configure DNS in the settings, under the connections tab.")
+                             qsTr("The DNS address is the same as the address of your server. You can configure DNS in the settings, under the connections tab.") +
+                             (root.isAdblock ? " " + qsTr("Ads and trackers are blocked using the AdGuard DNS filter, which is updated daily on the server.") : "")
             }
 
             ListItemType {

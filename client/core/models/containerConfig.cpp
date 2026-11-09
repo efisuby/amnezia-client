@@ -143,6 +143,16 @@ const TProxyProtocolConfig* ContainerConfig::getTProxyProtocolConfig() const
     return protocolConfig.as<TProxyProtocolConfig>();
 }
 
+TgWsProxyProtocolConfig* ContainerConfig::getTgWsProxyProtocolConfig()
+{
+    return protocolConfig.as<TgWsProxyProtocolConfig>();
+}
+
+const TgWsProxyProtocolConfig* ContainerConfig::getTgWsProxyProtocolConfig() const
+{
+    return protocolConfig.as<TgWsProxyProtocolConfig>();
+}
+
 Ikev2ProtocolConfig* ContainerConfig::getIkev2ProtocolConfig()
 {
     return protocolConfig.as<Ikev2ProtocolConfig>();

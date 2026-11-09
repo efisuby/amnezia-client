@@ -45,7 +45,7 @@ QString getBaseDescription(const QMap<DockerContainer, ContainerConfig> &contain
 {
     QString description;
     if (hasWriteAccess) {
-        const bool isDnsInstalled = containers.contains(DockerContainer::Dns);
+        const bool isDnsInstalled = containers.contains(DockerContainer::Dns) || containers.contains(DockerContainer::DnsAdblock);
         if (isAmneziaDnsEnabled && isDnsInstalled) {
             description += QStringLiteral("Amnezia DNS | ");
         }

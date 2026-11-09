@@ -48,6 +48,9 @@ namespace amnezia
         ServerDataVolumeNotRemoved = 225,
         XrayKeyGenerationFailed = 226,
         XrayKeyMigrationNeedsConfirm = 227,
+        ServerDnsServiceAlreadyInstalled = 228,
+        ServerMigrationStateReadFailed = 229,
+        ServerMigrationStateRestoreFailed = 230,
 
         // Ssh connection errors
         SshRequestDeniedError = 300,

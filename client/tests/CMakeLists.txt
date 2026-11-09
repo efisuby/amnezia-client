@@ -215,6 +215,33 @@ if(NOT ANDROID)
         test_common
     )
 
+    add_executable(test_dns_adblock_container
+        testDnsAdblockContainer.cpp
+    )
+
+    target_link_libraries(test_dns_adblock_container PRIVATE
+        Qt6::Test
+        test_common
+    )
+
+    add_executable(test_tg_ws_proxy_container
+        testTgWsProxyContainer.cpp
+    )
+
+    target_link_libraries(test_tg_ws_proxy_container PRIVATE
+        Qt6::Test
+        test_common
+    )
+
+    add_executable(test_server_migration_state_paths
+        testServerMigrationStatePaths.cpp
+    )
+
+    target_link_libraries(test_server_migration_state_paths PRIVATE
+        Qt6::Test
+        test_common
+    )
+
     add_executable(test_ui_app_st_model_and_controller
         testUiAppSTModelAndController.cpp
     )
@@ -485,7 +512,10 @@ if(NOT ANDROID)
     add_test(NAME ConfigFormatVersionTest          COMMAND test_config_format_version)
     add_test(NAME UiLanguageModelAndControllerTest COMMAND test_ui_language_model_and_controller)
     add_test(NAME UiIpModelAndControllerTest       COMMAND test_ui_ip_model_and_controller)
+    add_test(NAME ServerMigrationStatePathsTest    COMMAND test_server_migration_state_paths)
+    add_test(NAME TgWsProxyContainerTest           COMMAND test_tg_ws_proxy_container)
     add_test(NAME UiAppSTModelAndControllerTest    COMMAND test_ui_app_st_model_and_controller)
+    add_test(NAME DnsAdblockContainerTest          COMMAND test_dns_adblock_container)
     add_test(NAME UiAllowedDnsModelAndControllerTest COMMAND test_ui_allowed_dns_model_and_controller)
     add_test(NAME BackupExportImportTest           COMMAND test_backup_export_import)
     add_test(NAME FavoriteLocationsRestoreTest     COMMAND test_favorite_locations_restore)

@@ -562,7 +562,7 @@ QStringList ServersUiController::getAllInstalledServicesName(int serverIndex) co
     for (auto it = containers.begin(); it != containers.end(); ++it) {
         DockerContainer container = it.key();
         if (ContainerUtils::containerService(container) == ServiceType::Other) {
-            if (container == DockerContainer::Dns) {
+            if (ContainerUtils::isDnsContainer(container)) {
                 servicesName.append("DNS");
             } else if (container == DockerContainer::Sftp) {
                 servicesName.append("SFTP");
@@ -576,6 +576,8 @@ QStringList ServersUiController::getAllInstalledServicesName(int serverIndex) co
                 servicesName.append("Telemt");
             } else if (container == DockerContainer::TProxy) {
                 servicesName.append("TProxy");
+            } else if (container == DockerContainer::TgWsProxy) {
+                servicesName.append("tg-ws-proxy");
             }
         }
     }

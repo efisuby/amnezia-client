@@ -55,6 +55,7 @@ InstallUiController::InstallUiController(InstallController *installController,
                                          MtProxyConfigModel* mtConfigModel,
                                          TelemtConfigModel *telemtConfigModel,
                                          TProxyConfigModel *tProxyConfigModel,
+                                         TgWsProxyConfigModel *tgWsProxyConfigModel,
                                          ConnectionController *connectionController,
                                          QObject *parent)
     : QObject(parent),
@@ -76,10 +77,14 @@ InstallUiController::InstallUiController(InstallController *installController,
       m_mtProxyConfigModel(mtConfigModel),
       m_telemtConfigModel(telemtConfigModel),
       m_tProxyConfigModel(tProxyConfigModel),
+      m_tgWsProxyConfigModel(tgWsProxyConfigModel),
       m_connectionController(connectionController)
 {
     connect(m_installController, &InstallController::configValidated, this, &InstallUiController::configValidated);
     connect(m_installController, &InstallController::validationErrorOccurred, this, &InstallUiController::installationErrorOccurred);
+    connect(m_installController, &InstallController::migrationProgress, this, [this](DockerContainer container, int index, int total) {
+        emit serverMigrationProgress(ContainerUtils::containerHumanNames().value(container), index, total);
+    });
 }
 
 InstallUiController::~InstallUiController()
@@ -267,6 +272,10 @@ bool InstallUiController::buildContainerConfigFromModel(int containerIndex, int 
     }
     case Proto::TProxy: {
         containerConfig.protocolConfig = m_tProxyConfigModel->getProtocolConfig();
+        break;
+    }
+    case Proto::TgWsProxy: {
+        containerConfig.protocolConfig = m_tgWsProxyConfigModel->getProtocolConfig();
         break;
     }
 #ifdef Q_OS_WINDOWS
@@ -507,6 +516,38 @@ void InstallUiController::rebootServer(const QString &serverId)
     } else {
         emit installationErrorOccurred(errorCode);
     }
+}
+
+void InstallUiController::migrateServer(const QString &serverId)
+{
+    const QString serverName = m_serversController->notificationDisplayName(serverId);
+    const ServerCredentials newCredentials = m_processedServerCredentials;
+    auto skippedContainers = QSharedPointer<QList<DockerContainer>>::create();
+
+    auto *watcher = new QFutureWatcher<ErrorCode>(this);
+    connect(watcher, &QFutureWatcher<ErrorCode>::finished, this, [this, watcher, serverName, skippedContainers]() {
+        const ErrorCode errorCode = watcher->result();
+        watcher->deleteLater();
+        if (errorCode != ErrorCode::NoError) {
+            emit installationErrorOccurred(errorCode);
+            return;
+        }
+
+        QString message = tr("Server '%1' was moved. Point its domain to the new server address").arg(serverName);
+        if (!skippedContainers->isEmpty()) {
+            QStringList skippedNames;
+            for (const DockerContainer container : std::as_const(*skippedContainers)) {
+                skippedNames.append(ContainerUtils::containerHumanNames().value(container));
+            }
+            message += ". " + tr("Not moved: %1").arg(skippedNames.join(", "));
+        }
+        emit serverMigrated(message);
+    });
+
+    InstallController *installController = m_installController;
+    watcher->setFuture(QtConcurrent::run([installController, serverId, newCredentials, skippedContainers]() {
+        return installController->migrateServer(serverId, newCredentials, *skippedContainers);
+    }));
 }
 
 void InstallUiController::updateServerPackages(const QString &serverId)
@@ -759,6 +800,7 @@ void InstallUiController::updateProtocolConfigModel(const QString &serverId, int
     case Proto::MtProxy: updateIfPresent(m_mtProxyConfigModel, containerConfig.getMtProxyProtocolConfig()); break;
     case Proto::Telemt: updateIfPresent(m_telemtConfigModel, containerConfig.getTelemtProtocolConfig()); break;
     case Proto::TProxy: updateIfPresent(m_tProxyConfigModel, containerConfig.getTProxyProtocolConfig()); break;
+    case Proto::TgWsProxy: updateIfPresent(m_tgWsProxyConfigModel, containerConfig.getTgWsProxyProtocolConfig()); break;
 #ifdef Q_OS_WINDOWS
     case Proto::Ikev2: updateIfPresent(m_ikev2ConfigModel, containerConfig.getIkev2ProtocolConfig()); break;
 #endif

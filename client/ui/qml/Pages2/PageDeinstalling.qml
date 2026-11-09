@@ -21,6 +21,14 @@ PageType {
     property string headerText: qsTr("Removing services from %1")
     property string progressText: qsTr("Usually it takes no more than 5 minutes")
 
+    Connections {
+        target: InstallController
+
+        function onServerMigrationProgress(containerName, index, total) {
+            root.progressText = qsTr("Moving %1 (%2 of %3)").arg(containerName).arg(index).arg(total)
+        }
+    }
+
     SortFilterProxyModel {
         id: proxyServersModel
 

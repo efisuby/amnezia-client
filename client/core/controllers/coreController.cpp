@@ -120,6 +120,9 @@ void CoreController::initModels()
     m_tProxyConfigModel = new TProxyConfigModel(this);
     setQmlContextProperty("TProxyConfigModel", m_tProxyConfigModel);
 
+    m_tgWsProxyConfigModel = new TgWsProxyConfigModel(this);
+    setQmlContextProperty("TgWsProxyConfigModel", m_tgWsProxyConfigModel);
+
     m_clientManagementModel = new ClientManagementModel(this);
     setQmlContextProperty("ClientManagementModel", m_clientManagementModel);
 
@@ -177,7 +180,8 @@ void CoreController::initCoreControllers()
     m_installController = new InstallController(m_serversRepository, m_appSettingsRepository, this);
     m_exportController = new ExportController(m_serversRepository, m_appSettingsRepository, this);
     m_importCoreController = new ImportController(m_serversRepository, m_appSettingsRepository, this);
-    m_connectionController = new ConnectionController(m_serversRepository, m_appSettingsRepository, m_vpnConnection.get(), this);
+    m_connectionController = new ConnectionController(m_serversRepository, m_appSettingsRepository, m_ipSplitTunnelingController,
+                                                      m_vpnConnection.get(), this);
     m_settingsController = new SettingsController(m_serversRepository, m_appSettingsRepository, this);
     m_localProxyController = new LocalProxyController(m_serversRepository, m_appSettingsRepository, m_subscriptionController, this);
 }
@@ -197,7 +201,7 @@ void CoreController::initControllers()
                                                      m_ikev2ConfigModel,
 #endif
                                                      m_sftpConfigModel, m_socks5ConfigModel, m_mtProxyConfigModel, m_telemtConfigModel,
-                                                     m_tProxyConfigModel,
+                                                     m_tProxyConfigModel, m_tgWsProxyConfigModel,
                                                      m_connectionController, this);
     setQmlContextProperty("InstallController", m_installUiController);
 

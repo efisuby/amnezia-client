@@ -32,6 +32,8 @@
         <file>Components/TermsAndPrivacyText.qml</file>
         <file>Components/TransportProtoSelector.qml</file>
         <file>Components/AddSitePanel.qml</file>
+        <file>Components/SitesListAutoUpdatePanel.qml</file>
+        <file>Components/ServerCredentialsFields.qml</file>
         <file>Config/GlobalConfig.qml</file>
         <file>Config/CountryRegionNames.qml</file>
         <file>Config/Dialogs.qml</file>
@@ -135,6 +137,7 @@
         <file>Pages2/PageServiceTProxySettings.qml</file>
         <file>Pages2/PageServiceSftpSettings.qml</file>
         <file>Pages2/PageServiceSocksProxySettings.qml</file>
+        <file>Pages2/PageServiceTgWsProxySettings.qml</file>
         <file>Pages2/PageServiceTorWebsiteSettings.qml</file>
         <file>Pages2/PageSettings.qml</file>
         <file>Pages2/PageSettingsAbout.qml</file>
@@ -151,6 +154,7 @@
         <file>Pages2/PageSettingsLogging.qml</file>
         <file>Pages2/PageSettingsLogViewer.qml</file>
         <file>Pages2/PageSettingsServerData.qml</file>
+        <file>Pages2/PageSettingsServerMigration.qml</file>
         <file>Pages2/PageSettingsServerInfo.qml</file>
         <file>Pages2/PageSettingsServerProtocol.qml</file>
         <file>Pages2/PageSettingsServerProtocols.qml</file>

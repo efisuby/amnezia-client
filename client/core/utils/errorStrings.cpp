@@ -75,6 +75,15 @@ QString errorString(ErrorCode code) {
                                    "Applying these settings will recreate it with new keys, and all existing "
                                    "configurations will stop working.");
         break;
+    case(ErrorCode::ServerDnsServiceAlreadyInstalled):
+        errorMessage = QObject::tr("Another DNS service is already installed on the server. Remove it first.");
+        break;
+    case(ErrorCode::ServerMigrationStateReadFailed):
+        errorMessage = QObject::tr("Could not read keys and users from the current server. Nothing was changed.");
+        break;
+    case(ErrorCode::ServerMigrationStateRestoreFailed):
+        errorMessage = QObject::tr("Could not restore keys and users on the new server. The current server was not changed.");
+        break;
     case(ErrorCode::ServerContainerRuntimeNotSupported): errorMessage = QObject::tr("Server error: The default container runtime available for installation on this server is not supported.\n Install Docker Engine on the server manually and try again."); break;
     case(ErrorCode::ContainerRuntimeServiceNotRunning): errorMessage = QObject::tr("Container runtime error: The container runtime service is not running.\n Check the container runtime service on the server, or wait about a minute and try again."); break;
 

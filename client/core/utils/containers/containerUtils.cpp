@@ -75,11 +75,13 @@ QMap<DockerContainer, QString> ContainerUtils::containerHumanNames()
 
              { DockerContainer::TorWebSite, QObject::tr("Website in Tor network") },
              { DockerContainer::Dns, QObject::tr("AmneziaDNS") },
+             { DockerContainer::DnsAdblock, QObject::tr("AmneziaDNS + Adblock") },
              { DockerContainer::Sftp, QObject::tr("SFTP file sharing service") },
              { DockerContainer::Socks5Proxy, QObject::tr("SOCKS5 proxy server") },
              { DockerContainer::MtProxy, QObject::tr("MTProxy (Telegram)") },
              { DockerContainer::Telemt, QObject::tr("Telemt (Telegram)") },
              { DockerContainer::TProxy, QObject::tr("TProxy (Telegram WEB)") },
+             { DockerContainer::TgWsProxy, QObject::tr("tg-ws-proxy (Telegram)") },
     };
 }
 
@@ -111,6 +113,8 @@ QMap<DockerContainer, QString> ContainerUtils::containerDescriptions()
              { DockerContainer::TorWebSite, QObject::tr("Deploy a WordPress site on the Tor network in two clicks.") },
              { DockerContainer::Dns,
                QObject::tr("Replace the current DNS server with your own. This will increase your privacy level.") },
+             { DockerContainer::DnsAdblock,
+               QObject::tr("Your own DNS server that blocks ads and trackers using the AdGuard DNS filter.") },
              { DockerContainer::Sftp,
                QObject::tr("Create a file vault on your server to securely store and transfer files.") },
              { DockerContainer::Socks5Proxy, ("") },
@@ -120,6 +124,8 @@ QMap<DockerContainer, QString> ContainerUtils::containerDescriptions()
                QObject::tr("Telegram MTProto proxy (Telemt, Rust)") },
              { DockerContainer::TProxy,
                QObject::tr("Telegram WEB proxy (tproxy-server)") },
+             { DockerContainer::TgWsProxy,
+               QObject::tr("Telegram MTProto proxy that reaches Telegram over WebSocket") },
     };
 }
 
@@ -185,6 +191,9 @@ QMap<DockerContainer, QString> ContainerUtils::containerDetailedDescriptions()
 
         { DockerContainer::TorWebSite, QObject::tr("Website in Tor network") },
         { DockerContainer::Dns, QObject::tr("DNS Service") },
+        { DockerContainer::DnsAdblock,
+          QObject::tr("DNS service with ad blocking. Ads and trackers are blocked on your server using the "
+                      "AdGuard DNS filter, which is updated daily.") },
         { DockerContainer::Sftp,
           QObject::tr("After installation, Amnezia will create a\n\n file storage on your server. "
                       "You will be able to access it using\n FileZilla or other SFTP clients, "
@@ -203,6 +212,10 @@ QMap<DockerContainer, QString> ContainerUtils::containerDetailedDescriptions()
           QObject::tr("Telegram WEB proxy. Clients connect over HTTPS to a hostname; "
                       "the server relays traffic to official MTProxy. Requires a domain, "
                       "ports 80 and 443, and a WEB-capable Telegram app.") },
+        { DockerContainer::TgWsProxy,
+          QObject::tr("Telegram MTProto proxy powered by tg-ws-proxy. "
+                      "The server reaches Telegram data centers over WebSocket, which helps where direct "
+                      "connections to Telegram are blocked. Supports FakeTLS mode for bypassing DPI-based blocking.") },
     };
 }
 
@@ -229,12 +242,14 @@ Proto ContainerUtils::defaultProtocol(DockerContainer c)
     case DockerContainer::SSXray: return Proto::SSXray;
 
     case DockerContainer::TorWebSite: return Proto::TorWebSite;
-    case DockerContainer::Dns: return Proto::Dns;
+    case DockerContainer::Dns:
+    case DockerContainer::DnsAdblock: return Proto::Dns;
     case DockerContainer::Sftp: return Proto::Sftp;
     case DockerContainer::Socks5Proxy: return Proto::Socks5Proxy;
     case DockerContainer::MtProxy: return Proto::MtProxy;
     case DockerContainer::Telemt: return Proto::Telemt;
     case DockerContainer::TProxy: return Proto::TProxy;
+    case DockerContainer::TgWsProxy: return Proto::TgWsProxy;
     default: return Proto::Unknown;
     }
 }
@@ -265,6 +280,7 @@ bool ContainerUtils::isSupportedByCurrentPlatform(DockerContainer c)
     case DockerContainer::MtProxy: return true;
     case DockerContainer::Telemt: return true;
     case DockerContainer::TProxy: return true;
+    case DockerContainer::TgWsProxy: return true;
     default:
         return false;
     }
@@ -283,6 +299,7 @@ bool ContainerUtils::isSupportedByCurrentPlatform(DockerContainer c)
     case DockerContainer::MtProxy: return true;
     case DockerContainer::Telemt: return true;
     case DockerContainer::TProxy: return true;
+    case DockerContainer::TgWsProxy: return true;
     default:
         return false;
     }
@@ -304,6 +321,7 @@ bool ContainerUtils::isSupportedByCurrentPlatform(DockerContainer c)
     case DockerContainer::MtProxy: return true;
     case DockerContainer::Telemt: return true;
     case DockerContainer::TProxy: return true;
+    case DockerContainer::TgWsProxy: return true;
     default: return false;
     }
 
@@ -368,11 +386,13 @@ bool ContainerUtils::isShareable(DockerContainer container)
     switch (container) {
     case DockerContainer::TorWebSite: return false;
     case DockerContainer::Dns: return false;
+    case DockerContainer::DnsAdblock: return false;
     case DockerContainer::Sftp: return false;
     case DockerContainer::Socks5Proxy: return false;
     case DockerContainer::MtProxy: return false;
     case DockerContainer::Telemt: return false;
     case DockerContainer::TProxy: return false;
+    case DockerContainer::TgWsProxy: return false;
     default: return true;
     }
 }
@@ -380,6 +400,28 @@ bool ContainerUtils::isShareable(DockerContainer container)
 bool ContainerUtils::isAwgContainer(DockerContainer container)
 {
     return container == DockerContainer::Awg || container == DockerContainer::Awg2;
+}
+
+bool ContainerUtils::isDnsContainer(DockerContainer container)
+{
+    return container == DockerContainer::Dns || container == DockerContainer::DnsAdblock;
+}
+
+QStringList ContainerUtils::migrationStatePaths(DockerContainer container)
+{
+    switch (container) {
+    case DockerContainer::Awg:
+    case DockerContainer::Awg2: return { QStringLiteral("/opt/amnezia/awg") };
+    case DockerContainer::WireGuard: return { QStringLiteral("/opt/amnezia/wireguard") };
+    case DockerContainer::OpenVpn: return { QStringLiteral("/opt/amnezia/openvpn") };
+    case DockerContainer::Xray: return { QStringLiteral("/opt/amnezia/xray") };
+    case DockerContainer::MtProxy:
+    case DockerContainer::Telemt:
+    case DockerContainer::TProxy:
+    case DockerContainer::TgWsProxy: return { QStringLiteral("/data") };
+    case DockerContainer::TorWebSite: return { QStringLiteral("/var/lib/tor/hidden_service") };
+    default: return {};
+    }
 }
 
 bool ContainerUtils::isUnsupportedContainer(DockerContainer container)
@@ -409,6 +451,7 @@ int ContainerUtils::installPageOrder(DockerContainer container)
     case DockerContainer::MtProxy:
     case DockerContainer::Telemt:
     case DockerContainer::TProxy:
+    case DockerContainer::TgWsProxy:
         return 20;
     default: return 0;
     }

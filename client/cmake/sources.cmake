@@ -37,6 +37,7 @@ set(HEADERS ${HEADERS}
     ${CLIENT_ROOT_DIR}/core/installers/socks5Installer.h
     ${CLIENT_ROOT_DIR}/core/installers/mtProxyInstaller.h
     ${CLIENT_ROOT_DIR}/core/installers/telemtInstaller.h
+    ${CLIENT_ROOT_DIR}/core/installers/tgWsProxyInstaller.h
     ${CLIENT_ROOT_DIR}/core/installers/tProxyInstaller.h
     ${CLIENT_ROOT_DIR}/core/controllers/appSplitTunnelingController.h
     ${CLIENT_ROOT_DIR}/core/controllers/ipSplitTunnelingController.h
@@ -127,6 +128,7 @@ set(SOURCES ${SOURCES}
     ${CLIENT_ROOT_DIR}/core/installers/socks5Installer.cpp
     ${CLIENT_ROOT_DIR}/core/installers/mtProxyInstaller.cpp
     ${CLIENT_ROOT_DIR}/core/installers/telemtInstaller.cpp
+    ${CLIENT_ROOT_DIR}/core/installers/tgWsProxyInstaller.cpp
     ${CLIENT_ROOT_DIR}/core/installers/tProxyInstaller.cpp
     ${CLIENT_ROOT_DIR}/core/controllers/appSplitTunnelingController.cpp
     ${CLIENT_ROOT_DIR}/core/controllers/ipSplitTunnelingController.cpp

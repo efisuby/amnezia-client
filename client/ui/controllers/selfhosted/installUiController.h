@@ -32,6 +32,7 @@
 #include "ui/models/services/mtProxyConfigModel.h"
 #include "ui/models/services/telemtConfigModel.h"
 #include "ui/models/services/tProxyConfigModel.h"
+#include "ui/models/services/tgWsProxyConfigModel.h"
 
 class InstallUiController : public QObject
 {
@@ -55,6 +56,7 @@ public:
                                MtProxyConfigModel* mtConfigModel,
                                TelemtConfigModel* telemtConfigModel,
                                TProxyConfigModel* tProxyConfigModel,
+                               TgWsProxyConfigModel* tgWsProxyConfigModel,
                                ConnectionController* connectionController,
                                QObject *parent = nullptr);
     ~InstallUiController();
@@ -72,6 +74,7 @@ public slots:
 
     void removeServer(const QString &serverId);
     void rebootServer(const QString &serverId);
+    void migrateServer(const QString &serverId);
     void updateServerPackages(const QString &serverId);
     void removeAllContainers(const QString &serverId);
     void removeContainer(const QString &serverId, int containerIndex);
@@ -114,6 +117,8 @@ signals:
     void scanServerFinished(bool isInstalledContainerFound);
 
     void rebootServerFinished(const QString &finishedMessage);
+    void serverMigrationProgress(const QString &containerName, int index, int total);
+    void serverMigrated(const QString &finishedMessage);
     void updateServerPackagesFinished(const QString &finishedMessage);
     void removeServerFinished(const QString &finishedMessage);
     void removeAllContainersFinished(const QString &finishedMessage);
@@ -163,6 +168,7 @@ private:
     MtProxyConfigModel* m_mtProxyConfigModel;
     TelemtConfigModel* m_telemtConfigModel;
     TProxyConfigModel* m_tProxyConfigModel;
+    TgWsProxyConfigModel* m_tgWsProxyConfigModel;
     ConnectionController* m_connectionController;
 
     ServerCredentials m_processedServerCredentials;

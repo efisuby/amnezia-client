@@ -47,6 +47,8 @@ Proto ProtocolConfig::type() const
             return Proto::Telemt;
         } else if constexpr (std::is_same_v<T, TProxyProtocolConfig>) {
             return Proto::TProxy;
+        } else if constexpr (std::is_same_v<T, TgWsProxyProtocolConfig>) {
+            return Proto::TgWsProxy;
         }
         return Proto::Unknown;
     }, data);
@@ -80,6 +82,8 @@ QString ProtocolConfig::port() const
             return arg.port.isEmpty() ? QString(protocols::telemt::defaultPort) : arg.port;
         } else if constexpr (std::is_same_v<T, TProxyProtocolConfig>) {
             return arg.port.isEmpty() ? QString(protocols::tProxy::defaultPort) : arg.port;
+        } else if constexpr (std::is_same_v<T, TgWsProxyProtocolConfig>) {
+            return arg.port.isEmpty() ? QString(protocols::tgWsProxy::defaultPort) : arg.port;
         }
         return QString();
     }, data);
@@ -108,6 +112,8 @@ QString ProtocolConfig::transportProto() const
         } else if constexpr (std::is_same_v<T, TelemtProtocolConfig>) {
             return QStringLiteral("tcp");
         } else if constexpr (std::is_same_v<T, TProxyProtocolConfig>) {
+            return QStringLiteral("tcp");
+        } else if constexpr (std::is_same_v<T, TgWsProxyProtocolConfig>) {
             return QStringLiteral("tcp");
         }
         return QString();
@@ -326,6 +332,8 @@ ProtocolConfig ProtocolConfig::fromJson(const QJsonObject& json, Proto type)
         return ProtocolConfig{TelemtProtocolConfig::fromJson(json)};
     case Proto::TProxy:
         return ProtocolConfig{TProxyProtocolConfig::fromJson(json)};
+    case Proto::TgWsProxy:
+        return ProtocolConfig{TgWsProxyProtocolConfig::fromJson(json)};
     default:
         return ProtocolConfig{AwgProtocolConfig{}};
     }

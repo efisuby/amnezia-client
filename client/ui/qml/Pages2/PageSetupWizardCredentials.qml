@@ -8,37 +8,11 @@ import Style 1.0
 import "./"
 import "../Controls2"
 import "../Config"
+import "../Components"
 import "../Controls2/TextTypes"
 
 PageType {
     id: root
-
-    function trimField(field) {
-        field.textField.text = field.textField.text.replace(/^\s+|\s+$/g, '')
-    }
-
-    function isCredentialsFilled() {
-        var hasEmptyField = false
-
-        if (hostnameField.textField.text === "") {
-            hostnameField.errorText = qsTr("Ip address cannot be empty")
-            hasEmptyField = true
-        } else if (!hostnameField.textField.acceptableInput) {
-            hostnameField.errorText = qsTr("Enter the address in the format 255.255.255.255:88")
-        }
-
-        if (usernameField.textField.text === "") {
-            usernameField.errorText = qsTr("Login cannot be empty")
-            hasEmptyField = true
-        }
-
-        if (secretDataField.textField.text === "") {
-            secretDataField.errorText = qsTr("Password/private key cannot be empty")
-            hasEmptyField = true
-        }
-
-        return !hasEmptyField
-    }
 
     FlickableType {
         id: flickable
@@ -71,49 +45,10 @@ PageType {
 
                 spacing: 24
 
-                ColumnLayout {
+                ServerCredentialsFields {
+                    id: credentialsFields
+
                     Layout.fillWidth: true
-
-                    spacing: 12
-
-                    TextFieldType {
-                        id: hostnameField
-
-                        Layout.fillWidth: true
-
-                        headerText: qsTr("Server IP address [:port]")
-                        textField.placeholderText: qsTr("255.255.255.255:22")
-
-                        textField.onEditingFinished: root.trimField(hostnameField)
-                    }
-
-                    TextFieldType {
-                        id: usernameField
-
-                        Layout.fillWidth: true
-
-                        headerText: qsTr("SSH Username")
-                        textField.placeholderText: "root"
-
-                        textField.onEditingFinished: root.trimField(usernameField)
-                    }
-
-                    TextFieldType {
-                        id: secretDataField
-
-                        Layout.fillWidth: true
-
-                        headerText: qsTr("Password or SSH private key")
-                        passwordToggle: true
-
-                        textField.onEditingFinished: root.trimField(secretDataField)
-                    }
-
-                    NotificationType {
-                        Layout.fillWidth: true
-
-                        text: qsTr("SSH key requirements: supported key types are ED25519 and RSA in PEM format. Paste the private key, including the BEGIN/END lines. If your key doesn’t work, generate a compatible one")
-                    }
                 }
 
                 ColumnLayout {
@@ -174,13 +109,13 @@ PageType {
             text: qsTr("Continue")
 
             onClicked: {
-                if (!root.isCredentialsFilled()) {
+                if (!credentialsFields.isFilled()) {
                     return
                 }
 
-                InstallController.setProcessedServerCredentials(hostnameField.textField.text,
-                                                                usernameField.textField.text,
-                                                                secretDataField.textField.text)
+                InstallController.setProcessedServerCredentials(credentialsFields.hostName,
+                                                                credentialsFields.userName,
+                                                                credentialsFields.secretData)
                 ServersUiController.setProcessedServerId("")
 
                 PageController.showBusyIndicator(true)

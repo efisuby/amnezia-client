@@ -22,6 +22,7 @@
 #include "core/installers/openvpnInstaller.h"
 #include "core/installers/sftpInstaller.h"
 #include "core/installers/socks5Installer.h"
+#include "core/installers/tgWsProxyInstaller.h"
 #include "core/installers/mtProxyInstaller.h"
 #include "core/installers/telemtInstaller.h"
 #include "core/installers/tProxyInstaller.h"
@@ -140,6 +141,9 @@ namespace
         return false;
     }
 
+    constexpr char migrationArchivePath[] = "/tmp/amnezia-migration-state.tgz";
+    constexpr char migrationRestoredMarker[] = "amnezia_state_restored";
+
     bool containerKeepsIdentityInDataVolume(DockerContainer container)
     {
         return container == DockerContainer::MtProxy
@@ -186,7 +190,7 @@ InstallController::~InstallController()
 }
 
 ErrorCode InstallController::setupContainer(const ServerCredentials &credentials, DockerContainer container, ContainerConfig &config,
-                                            bool isUpdate, bool acceptXrayKeyLoss)
+                                            bool isUpdate, bool acceptXrayKeyLoss, const QByteArray &stateArchive)
 {
     SshSession sshSession;
     ErrorCode e = ErrorCode::NoError;
@@ -270,6 +274,12 @@ ErrorCode InstallController::setupContainer(const ServerCredentials &credentials
     }
 
     setupServerFirewall(credentials, sshSession);
+
+    if (!stateArchive.isEmpty()) {
+        e = restoreContainerState(credentials, container, sshSession, stateArchive);
+        if (e)
+            return e;
+    }
 
     return startupContainerWorker(credentials, container, config, sshSession);
 }
@@ -878,9 +888,138 @@ ErrorCode InstallController::restoreXrayStateIntoDataVolume(const ServerCredenti
     return ErrorCode::NoError;
 }
 
+ErrorCode InstallController::readContainerState(const ServerCredentials &credentials, DockerContainer container,
+                                                SshSession &sshSession, QByteArray &stateArchive)
+{
+    stateArchive.clear();
+
+    const QStringList paths = ContainerUtils::migrationStatePaths(container);
+    if (paths.isEmpty()) {
+        return ErrorCode::NoError;
+    }
+
+    QString stdOut;
+    auto collect = [&stdOut](const QString &data, libssh::Client &) {
+        stdOut += data;
+        return ErrorCode::NoError;
+    };
+
+    const QString script =
+            QStringLiteral("sudo docker exec -i $CONTAINER_NAME sh -c 'tar czf %1 %2 && base64 %1 | tr -d \"\\n\"; rm -f %1'")
+                    .arg(QString::fromLatin1(migrationArchivePath), paths.join(' '));
+    const ErrorCode errorCode = sshSession.runScript(
+            credentials, SshSession::replaceVars(script, amnezia::genBaseVars(credentials, container, QString(), QString())),
+            collect, [](const QString &, libssh::Client &) { return ErrorCode::NoError; });
+    if (errorCode != ErrorCode::NoError) {
+        return ErrorCode::ServerMigrationStateReadFailed;
+    }
+
+    stdOut.remove(QRegularExpression(QStringLiteral("\\s")));
+    const auto decoded = QByteArray::fromBase64Encoding(stdOut.toLatin1(), QByteArray::AbortOnBase64DecodingErrors);
+    if (!decoded || decoded.decoded.isEmpty()) {
+        return ErrorCode::ServerMigrationStateReadFailed;
+    }
+
+    stateArchive = decoded.decoded;
+    return ErrorCode::NoError;
+}
+
+ErrorCode InstallController::restoreContainerState(const ServerCredentials &credentials, DockerContainer container,
+                                                   SshSession &sshSession, const QByteArray &stateArchive)
+{
+    const QString encodedPath = QString::fromLatin1(migrationArchivePath) + QStringLiteral(".b64");
+    ErrorCode errorCode = sshSession.uploadTextFileToContainer(container, credentials, QString::fromLatin1(stateArchive.toBase64()),
+                                                               encodedPath, libssh::ScpOverwriteMode::ScpOverwriteExisting);
+    if (errorCode != ErrorCode::NoError) {
+        return ErrorCode::ServerMigrationStateRestoreFailed;
+    }
+
+    QString stdOut;
+    auto collect = [&stdOut](const QString &data, libssh::Client &) {
+        stdOut += data + "\n";
+        return ErrorCode::NoError;
+    };
+
+    const bool hasStartupScript = !amnezia::scriptData(ProtocolScriptType::container_startup, container).isEmpty();
+    const QString script =
+            QStringLiteral("sudo docker exec -i $CONTAINER_NAME sh -c 'base64 -d %1 | tar xzf - -C / && rm -f %1 && echo %2'%3")
+                    .arg(encodedPath, QString::fromLatin1(migrationRestoredMarker),
+                         hasStartupScript ? QString() : QStringLiteral("\nsudo docker restart $CONTAINER_NAME"));
+    errorCode = sshSession.runScript(
+            credentials, SshSession::replaceVars(script, amnezia::genBaseVars(credentials, container, QString(), QString())),
+            collect, collect);
+    if (errorCode != ErrorCode::NoError || !stdOut.contains(QString::fromLatin1(migrationRestoredMarker))) {
+        return ErrorCode::ServerMigrationStateRestoreFailed;
+    }
+
+    return ErrorCode::NoError;
+}
+
+ErrorCode InstallController::migrateServer(const QString &serverId, const ServerCredentials &newCredentials,
+                                           QList<DockerContainer> &skippedContainers)
+{
+    skippedContainers.clear();
+
+    auto adminConfig = m_serversRepository->selfHostedAdminConfig(serverId);
+    if (!adminConfig.has_value()) {
+        return ErrorCode::InternalError;
+    }
+    const ServerCredentials oldCredentials = adminConfig->credentials();
+
+    SshSession oldSession;
+    SshSession newSession;
+
+    ErrorCode errorCode = isUserInSudo(newCredentials, newSession);
+    if (errorCode != ErrorCode::NoError) {
+        return errorCode;
+    }
+
+    QMap<DockerContainer, ContainerConfig> containersOnNewServer;
+    errorCode = getAlreadyInstalledContainers(newCredentials, containersOnNewServer, newSession);
+    if (errorCode != ErrorCode::NoError) {
+        return errorCode;
+    }
+
+    QList<DockerContainer> containers;
+    for (auto it = adminConfig->containers.constBegin(); it != adminConfig->containers.constEnd(); ++it) {
+        if (it.key() == DockerContainer::Ipsec || amnezia::scriptFolder(it.key()).isEmpty()) {
+            skippedContainers.append(it.key());
+        } else {
+            containers.append(it.key());
+        }
+    }
+
+    for (int i = 0; i < containers.size(); ++i) {
+        const DockerContainer container = containers.at(i);
+        emit migrationProgress(container, i + 1, containers.size());
+
+        QByteArray stateArchive;
+        errorCode = readContainerState(oldCredentials, container, oldSession, stateArchive);
+        if (errorCode != ErrorCode::NoError) {
+            return errorCode;
+        }
+
+        ContainerConfig config = adminConfig->containerConfig(container);
+        errorCode = setupContainer(newCredentials, container, config, containersOnNewServer.contains(container), true, stateArchive);
+        if (errorCode != ErrorCode::NoError) {
+            return errorCode;
+        }
+    }
+
+    if (NetworkUtilities::checkIPv4Format(adminConfig->hostName)) {
+        adminConfig->hostName = newCredentials.hostName;
+    }
+    adminConfig->userName = newCredentials.userName;
+    adminConfig->password = newCredentials.secretData;
+    adminConfig->port = newCredentials.port;
+    m_serversRepository->editServer(serverId, adminConfig->toJson(), serverConfigUtils::ConfigType::SelfHostedAdmin);
+
+    return ErrorCode::NoError;
+}
+
 ErrorCode InstallController::isServerPortBusy(const ServerCredentials &credentials, DockerContainer container, const ContainerConfig &config, SshSession &sshSession)
 {
-    if (container == DockerContainer::Dns) {
+    if (ContainerUtils::isDnsContainer(container)) {
         return ErrorCode::NoError;
     }
 
@@ -1085,7 +1224,7 @@ bool InstallController::isReinstallContainerRequired(DockerContainer container, 
         }
     }
 
-    if (container == DockerContainer::Socks5Proxy) {
+    if (container == DockerContainer::Socks5Proxy || container == DockerContainer::TgWsProxy) {
         return true;
     }
 
@@ -1421,6 +1560,7 @@ QScopedPointer<InstallerBase> InstallController::createInstaller(DockerContainer
     case DockerContainer::Socks5Proxy: return QScopedPointer<InstallerBase>(new Socks5Installer(this));
     case DockerContainer::MtProxy: return QScopedPointer<InstallerBase>(new MtProxyInstaller(this));
     case DockerContainer::Telemt: return QScopedPointer<InstallerBase>(new TelemtInstaller(this));
+    case DockerContainer::TgWsProxy: return QScopedPointer<InstallerBase>(new TgWsProxyInstaller(this));
     case DockerContainer::TProxy: return QScopedPointer<InstallerBase>(new TProxyInstaller(this));
     default: return QScopedPointer<InstallerBase>(new InstallerBase(this));
     }
@@ -1577,6 +1717,14 @@ ErrorCode InstallController::installServer(const ServerCredentials &credentials,
     ErrorCode errorCode = getAlreadyInstalledContainers(credentials, installedContainers, sshSession);
     if (errorCode) {
         return errorCode;
+    }
+
+    if (ContainerUtils::isDnsContainer(container)) {
+        for (auto it = installedContainers.constBegin(); it != installedContainers.constEnd(); ++it) {
+            if (it.key() != container && ContainerUtils::isDnsContainer(it.key())) {
+                return ErrorCode::ServerDnsServiceAlreadyInstalled;
+            }
+        }
     }
 
     wasContainerInstalled = false;
@@ -1916,7 +2064,7 @@ ErrorCode InstallController::getAlreadyInstalledContainers(const ServerCredentia
     }
 
     const static QRegularExpression containerAndPortRegExp("(amnezia[-a-z0-9]*).*?:([0-9]*)->[0-9]*/(udp|tcp).*");
-    const static QRegularExpression torOrDnsRegExp("(amnezia-(?:torwebsite|dns)).*?([0-9]*)/(udp|tcp).*");
+    const static QRegularExpression torOrDnsRegExp("(amnezia-(?:torwebsite|dnsadblock|dns)).*?([0-9]*)/(udp|tcp).*");
 
     QStringList containerInfos = stdOut.split("\n");
     for (const QString &containerInfo : containerInfos) {

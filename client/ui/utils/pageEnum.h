@@ -93,6 +93,10 @@ namespace PageLoader
         PageSettingsLanguage,
 
         PageUpdate,
+
+        PageSettingsServerMigration,
+
+        PageServiceTgWsProxySettings,
     };
     Q_ENUM_NS(PageEnum)
 

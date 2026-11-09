@@ -38,11 +38,13 @@ QString amnezia::scriptFolder(amnezia::DockerContainer container)
 
     case DockerContainer::TorWebSite: return QLatin1String("website_tor");
     case DockerContainer::Dns: return QLatin1String("dns");
+    case DockerContainer::DnsAdblock: return QLatin1String("dns_adblock");
     case DockerContainer::Sftp: return QLatin1String("sftp");
     case DockerContainer::Socks5Proxy: return QLatin1String("socks5_proxy");
     case DockerContainer::MtProxy: return QLatin1String("mtproxy");
     case DockerContainer::Telemt: return QLatin1String("telemt");
     case DockerContainer::TProxy: return QLatin1String("tproxy");
+    case DockerContainer::TgWsProxy: return QLatin1String("tg_ws_proxy");
     default: return QString();
     }
 }
@@ -305,6 +307,19 @@ amnezia::ScriptVars amnezia::genSocks5ProxyVars(const ContainerConfig &container
     return vars;
 }
 
+amnezia::ScriptVars amnezia::genTgWsProxyVars(const ContainerConfig &containerConfig)
+{
+    ScriptVars vars;
+
+    if (const auto *tgWsProxyConfig = containerConfig.getTgWsProxyProtocolConfig()) {
+        vars.append({ "$TG_WS_PROXY_PORT", tgWsProxyConfig->port.isEmpty() ? protocols::tgWsProxy::defaultPort : tgWsProxyConfig->port });
+        vars.append({ "$TG_WS_PROXY_SECRET", tgWsProxyConfig->secret });
+        vars.append({ "$TG_WS_PROXY_FAKE_TLS_DOMAIN", tgWsProxyConfig->fakeTlsDomain });
+    }
+
+    return vars;
+}
+
 amnezia::ScriptVars amnezia::genMtProxyVars(const ContainerConfig &containerConfig) {
     ScriptVars vars;
 
@@ -460,6 +475,9 @@ amnezia::ScriptVars amnezia::genProtocolVarsForContainer(DockerContainer contain
         break;
     case Proto::TProxy:
         vars.append(genTProxyVars(containerConfig));
+        break;
+    case Proto::TgWsProxy:
+        vars.append(genTgWsProxyVars(containerConfig));
         break;
     default:
         break;

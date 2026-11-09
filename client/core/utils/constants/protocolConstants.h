@@ -317,6 +317,17 @@ namespace amnezia
 
         }
 
+        namespace tgWsProxy
+        {
+            constexpr char defaultPort[] = "1443";
+
+            constexpr char secretKey[] = "tgwsproxy_secret";
+            constexpr char fakeTlsDomainKey[] = "tgwsproxy_fake_tls_domain";
+
+            constexpr char secretPath[] = "/data/secret";
+            constexpr char fakeTlsDomainPath[] = "/data/fake_tls_domain";
+        }
+
         namespace socks5Proxy
         {
             constexpr char defaultUserName[] = "proxy_user";

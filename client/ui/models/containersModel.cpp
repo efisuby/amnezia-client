@@ -71,7 +71,7 @@ QVariant ContainersModel::data(const QModelIndex &index, int role) const
     case IsVpnContainerRole: return ContainerUtils::containerService(container) == ServiceType::Vpn;
     case IsServiceContainerRole: return ContainerUtils::containerService(container) == ServiceType::Other;
     case IsIpsecRole: return container == DockerContainer::Ipsec;
-    case IsDnsRole: return container == DockerContainer::Dns;
+    case IsDnsRole: return ContainerUtils::isDnsContainer(container);
     case IsSftpRole: return container == DockerContainer::Sftp;
     case IsTorWebsiteRole: return container == DockerContainer::TorWebSite;
     case IsSocks5ProxyRole: return container == DockerContainer::Socks5Proxy;

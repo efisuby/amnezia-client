@@ -166,6 +166,16 @@ PageType {
                 text: root.routeModes[modeSelector.currentIndex].name
                 color: AmneziaStyle.color.textSecondary
             }
+
+            SitesListAutoUpdatePanel {
+                Layout.fillWidth: true
+                Layout.leftMargin: 16
+                Layout.rightMargin: 16
+                Layout.bottomMargin: 24
+
+                visible: modeSelector.currentIndex === 0
+                enabled: root.pageEnabled
+            }
         }
 
         delegate: Item {
